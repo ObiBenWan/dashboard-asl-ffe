@@ -193,7 +193,7 @@ else:
         col2.metric("🎯 Touches Marquées", stats.get("total_touches_scored", 0))
         col3.metric("🛡️ Touches Reçues", stats.get("total_touches_received", 0))
         col4.metric("💡 Cible Tête %", f"{stats.get('head_zone_touches_percentage', 0):.1f}%")
-        
+       
         st.divider()
         
         # === ONGLETS DÉTAILS ===
