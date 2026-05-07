@@ -1,4 +1,4 @@
 streamlit==1.28.1
 firebase-admin==6.4.0
-google-cloud-firestore
+pandas
 plotly==5.20.0
