@@ -135,8 +135,8 @@ if not st.session_state.auth_success:
 
     with col_center:
         st.markdown('<div class="card-container"></div>', unsafe_allow_html=True)
-     
-        st.image("https://studio-7691886667-ec4b3.web.app/logo.png", width=300)
+        
+        st.image("https://studio-7691886667-ec4b3.web.app/logo.png", width=200)
         
         st.markdown('<h1 class="login-title">PROFIL COMBATTANT</h1>', unsafe_allow_html=True)
         
@@ -146,17 +146,12 @@ if not st.session_state.auth_success:
         if st.button("ACCÉDER AU PROFIL"):
             if prenom and code_acces:
                 try:
-                    docs = db.collection("athletes").stream()
-                    athlete_found = None
-                    athlete_id = None
+                    # Chercher directement par ID (nom en minuscule)
+                    athlete_id = prenom.lower()
+                    doc = db.collection("athletes").document(athlete_id).get()
                     
-                    for doc in docs:
-                        data = doc.to_dict()
-                        athlete_name = data.get("name", "").lower()
-                        if prenom.lower() in athlete_name:
-                            athlete_found = data
-                            athlete_id = doc.id
-                            break
+                    if doc.exists:
+                        athlete_found = doc.to_dict()
                     
                     if athlete_found and verify_access_code(athlete_id, code_acces):
                         st.session_state.auth_success = True
