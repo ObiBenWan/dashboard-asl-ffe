@@ -136,7 +136,7 @@ if not st.session_state.auth_success:
     with col_center:
         st.markdown('<div class="card-container"></div>', unsafe_allow_html=True)
         
-        st.image("https://studio-7691886667-ec4b3.web.app/logo.png", width=500)
+        st.image("https://studio-7691886667-ec4b3.web.app/logo.png", width=300)
         
         st.markdown('<h1 class="login-title">PROFIL COMBATTANT</h1>', unsafe_allow_html=True)
         
