@@ -27,9 +27,11 @@ if 'db' not in st.session_state:
             temp_file = f.name
         
         # Initialiser Firebase
-        if not firebase_admin.get_app():
-            cred = credentials.Certificate(temp_file)
-            firebase_admin.initialize_app(cred)
+        try:
+           firebase_admin.get_app()
+        except ValueError:
+           cred = credentials.Certificate(temp_file)
+           firebase_admin.initialize_app(cred)
         
         st.session_state.db = firestore.client()
     except Exception as e:
