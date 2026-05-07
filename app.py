@@ -5,6 +5,7 @@ from firebase_admin import credentials, firestore
 import hashlib
 import json
 import tempfile
+import pandas as pd
  
 # 1. CONFIGURATION DE LA PAGE
 st.set_page_config(page_title="ASL-FFE - Profil Combattant", layout="wide", initial_sidebar_state="collapsed")
