@@ -65,14 +65,14 @@ st.markdown("""
         margin-top: 20px;
     }
     
-    /* Conteneur centré */
-    .centered-container {
+    /* Style du conteneur "Card" (le bloc central) */
+    [data-testid="stVerticalBlock"] > div:has(div.card-container) {
         background-color: hsl(180, 25%, 20%);
         border: 1px solid hsl(180, 25%, 25%);
         border-radius: 0.75rem;
         padding: 40px;
         box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
-    }
+   }
     </style>
     """, unsafe_allow_html=True)
  
