@@ -19,19 +19,13 @@ st.markdown("""
         background-color: hsl(180, 25%, 15%);
         font-family: 'Space Grotesk', sans-serif;
     }
- 
+
     /* Masquer le header Streamlit */
     header {visibility: hidden;}
- 
-    /* Style du conteneur "Card" (le bloc central) */
-    [data-testid="stVerticalBlock"] > div:has(div.card-container) {
-        background-color: hsl(180, 25%, 20%);
-        border: 1px solid hsl(180, 25%, 25%);
-        border-radius: 0.75rem;
-        padding: 40px;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
-    }
- 
+    
+    /* Masquer le footer */
+    footer {visibility: hidden;}
+
     /* Titres */
     .login-title {
         color: hsl(210, 20%, 95%);
@@ -42,25 +36,25 @@ st.markdown("""
         margin-bottom: 30px;
         letter-spacing: -0.025em;
     }
- 
+
     .profile-title {
         color: hsl(210, 20%, 95%);
         font-size: 2.2rem;
         font-weight: 700;
         margin-bottom: 20px;
     }
- 
+
     /* Inputs */
     .stTextInput label {
         color: hsl(180, 10%, 60%) !important;
     }
-    .stTextInput div div input {
+    .stTextInput input {
         background-color: hsl(180, 25%, 25%) !important;
         border: 1px solid hsl(180, 25%, 25%) !important;
         color: white !important;
     }
- 
-    /* Bouton (Couleur Primary) */
+
+    /* Bouton */
     .stButton > button {
         background-color: hsl(182, 100%, 74%) !important;
         color: hsl(180, 25%, 10%) !important;
@@ -69,6 +63,15 @@ st.markdown("""
         height: 3.5rem !important;
         border: none !important;
         margin-top: 20px;
+    }
+    
+    /* Conteneur centré */
+    .centered-container {
+        background-color: hsl(180, 25%, 20%);
+        border: 1px solid hsl(180, 25%, 25%);
+        border-radius: 0.75rem;
+        padding: 40px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
     }
     </style>
     """, unsafe_allow_html=True)
@@ -128,24 +131,20 @@ def load_athlete_data(athlete_id: str) -> dict:
 # --- LOGIQUE DE CONNEXION ---
  
 if not st.session_state.auth_success:
-    # On crée 3 colonnes pour centrer le container au milieu
     col_left, col_center, col_right = st.columns([1, 2.5, 1])
- 
+
     with col_center:
-        # On utilise une div vide pour que le CSS puisse cibler ce bloc spécifique
-        st.markdown('<div class="card-container"></div>', unsafe_allow_html=True)
+        st.markdown('<div class="centered-container">', unsafe_allow_html=True)
         
-        # Le contenu est maintenant TOUT dans ce bloc
         st.image("https://studio-7691886667-ec4b3.web.app/logo.png", width=200)
         
         st.markdown('<h1 class="login-title">PROFIL COMBATTANT</h1>', unsafe_allow_html=True)
         
         prenom = st.text_input("Prénom")
         code_acces = st.text_input("Code d'accès", type="password")
- 
+
         if st.button("ACCÉDER AU PROFIL"):
             if prenom and code_acces:
-                # Chercher le combattant par prénom dans Firebase
                 try:
                     docs = db.collection("athletes").stream()
                     athlete_found = None
@@ -173,6 +172,8 @@ if not st.session_state.auth_success:
                     st.error(f"❌ Erreur: {e}")
             else:
                 st.warning("⚠️ Veuillez remplir tous les champs.")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
  
 # --- PAGE PROFIL (DÉVERROUILLÉE) ---
 else:
