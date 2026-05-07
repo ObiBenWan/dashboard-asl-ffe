@@ -73,8 +73,7 @@ st.markdown("""
         padding: 40px;
         box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
    }
-    </style>
-    """, unsafe_allow_html=True)
+    
  
 # 3. INITIALISATION FIREBASE
 if 'db' not in st.session_state:
