@@ -133,9 +133,7 @@ def load_athlete_data(athlete_id: str) -> dict:
 if not st.session_state.auth_success:
     col_left, col_center, col_right = st.columns([1, 2.5, 1])
 
-    with col_center:
-        st.markdown('<div class="card-container"></div>', unsafe_allow_html=True)
-        
+    with col_center:      
         st.image("https://studio-7691886667-ec4b3.web.app/logo.png", width=300)
         
         st.markdown('<h1 class="login-title">PROFIL COMBATTANT</h1>', unsafe_allow_html=True)
