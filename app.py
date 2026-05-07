@@ -136,7 +136,7 @@ if not st.session_state.auth_success:
         st.markdown('<div class="card-container"></div>', unsafe_allow_html=True)
         
         # Le contenu est maintenant TOUT dans ce bloc
-        st.image("https://studio-7691886667-ec4b3.web.app/logo.png", use_container_width=True)
+        st.image("https://studio-7691886667-ec4b3.web.app/logo.png", width=200)
         
         st.markdown('<h1 class="login-title">PROFIL COMBATTANT</h1>', unsafe_allow_html=True)
         
