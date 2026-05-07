@@ -133,37 +133,44 @@ def load_athlete_data(athlete_id: str) -> dict:
  
 if not st.session_state.auth_success:
     col_left, col_center, col_right = st.columns([1, 2.5, 1])
-
     with col_center:
         st.markdown('<div class="card-container"></div>', unsafe_allow_html=True)
-        
         st.image("https://studio-7691886667-ec4b3.web.app/logo.png", width=200)
-        
         st.markdown('<h1 class="login-title">PROFIL COMBATTANT</h1>', unsafe_allow_html=True)
         
         prenom = st.text_input("Prénom")
         code_acces = st.text_input("Code d'accès", type="password")
 
         if st.button("ACCÉDER AU PROFIL"):
-            if prenom and code_acces:
-                try:
-                    # Chercher directement par ID (nom en minuscule)
-                    athlete_id = prenom.lower()
-                    doc = db.collection("athletes").document(athlete_id).get()
-                    
-                    if doc.exists:
-                        athlete_found = doc.to_dict()
-                    
-                    if athlete_found and verify_access_code(athlete_id, code_acces):
-                        st.session_state.auth_success = True
-                        st.session_state.prenom_utilisateur = prenom
-                        st.session_state.code_valide = code_acces
-                        st.session_state.athlete_id = athlete_id
-                        st.session_state.athlete_data = athlete_found
-                        st.success("✅ Connexion réussie!")
-                        st.rerun()
-                    else:
-                        st.error("❌ Identifiants incorrects.")
+            doc = db.collection("athletes").document(code_acces.lower()).get()
+            if doc.exists:
+                # Si tu n'utilises pas encore de HASH, on vérifie juste si le doc existe
+                st.session_state.auth_success = True
+                st.session_state.prenom_utilisateur = prenom
+                st.session_state.athlete_data = json.loads(doc.to_dict().get("json_data")) # Crucial : charger le JSON
+                st.rerun()
+            else:
+                st.error("❌ Code d'accès incorrect.")
+
+# --- PAGE PROFIL CORRIGÉE ---
+else:
+    # On récupère les données du dernier match dans le JSON
+    full_data = st.session_state.athlete_data
+    match = full_data['history'][0] # On prend le match le plus récent
+    metrics = match['metrics']
+
+    st.title(f"Bienvenue, {st.session_state.prenom_utilisateur}")
+    
+    # Affichage des metrics réelles de tes fichiers JSON
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Match", match['result'].upper(), f"{match['myScore']}-{match['oppScore']}")
+    col2.metric("Explosivité", f"{metrics['explosivite']}%")
+    col3.metric("Réactivité", f"{metrics['reactivityScore']}/100")
+    col4.metric("Efficacité", f"{metrics['tacticalEfficiency']}%")
+Résumé de l'analyse :
+Ton fichier est techniquement très bon (plus avancé que les précédents), mais il est incompatible avec la manière dont nous avons stocké les données (le fameux json_data).
+
+Conseil : Utilise la version "corrigée" ci-dessus pour que le site puisse "déballer" le contenu de tes fichiers JSON avant d'essayer d'afficher les graphiques.
                 except Exception as e:
                     st.error(f"❌ Erreur: {e}")
             else:
