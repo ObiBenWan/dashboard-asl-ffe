@@ -2,5 +2,4 @@ streamlit==1.37.0
 firebase-admin==6.5.0
 google-cloud-firestore
 pandas==2.2.0
-python-dotenv==1.0.1
 plotly==5.20.0
