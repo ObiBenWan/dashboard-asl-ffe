@@ -4,53 +4,59 @@ from firebase_admin import credentials, firestore
 import json
 import pandas as pd
 
-# 1. STYLE CSS POUR LES COULEURS DU CLUB
-# Change les codes HEX (#...) pour correspondre exactement à tes couleurs
-club_css = """
-<style>
-    /* Fond de la page */
-    .stApp {
-        background-color: #0E1117; /* Noir/Gris foncé */
-    }
+# 1. CONFIGURATION ET DESIGN
+st.set_page_config(page_title="ASL-FFE - Login", layout="centered", initial_sidebar_state="collapsed")
+
+# Injection de ton CSS personnalisé
+st.markdown(f"""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap');
     
-    /* Style du titre */
-    h1 {
-        color: #FFD700 !important; /* Or/Jaune ASL */
+    /* On cible l'application Streamlit */
+    .stApp {{
+        background-color: hsl(180, 25%, 15%);
+        font-family: 'Space Grotesk', sans-serif;
+    }}
+
+    /* Conteneur principal style "Card" */
+    .login-card {{
+        background-color: hsl(180, 25%, 20%);
+        border-radius: 0.75rem;
+        border: 1px solid hsl(180, 25%, 25%);
+        padding: 2rem;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        max-width: 400px;
+        margin: auto;
+    }}
+
+    /* Titres */
+    h1, h2, h3 {{
+        color: hsl(210, 20%, 95%) !important;
         text-align: center;
-        font-family: 'Arial Black', sans-serif;
-    }
-    
-    /* Style des boutons */
-    .stButton>button {
-        background-color: #FFD700 !important;
-        color: black !important;
-        font-weight: bold;
-        border-radius: 10px;
-        border: none;
-        height: 3em;
-        width: 100%;
-    }
-    
-    /* Les boîtes de saisie */
-    .stTextInput>div>div>input {
-        background-color: #1A1C24;
+    }}
+
+    /* Inputs */
+    .stTextInput>div>div>input {{
+        background-color: hsl(180, 25%, 25%);
+        border: 1px solid hsl(180, 25%, 25%);
         color: white;
-        border: 1px solid #FFD700;
-    }
+        border-radius: 0.375rem;
+    }}
 
-    /* Logo centré */
-    .logo-container {
-        display: flex;
-        justify-content: center;
-        margin-bottom: 20px;
-    }
-</style>
-"""
+    /* Bouton personnalisé */
+    .stButton>button {{
+        background-color: hsl(182, 100%, 74%) !important;
+        color: hsl(180, 25%, 10%) !important;
+        font-weight: 700;
+        width: 100%;
+        border-radius: 0.375rem;
+        border: none;
+        height: 3rem;
+    }}
+    </style>
+    """, unsafe_allow_html=True)
 
-st.set_page_config(page_title="ASL-FFE Profil", layout="centered", initial_sidebar_state="collapsed")
-st.markdown(club_css, unsafe_allow_html=True)
-
-# --- CONNEXION FIREBASE (Identique) ---
+# 2. CONNEXION FIREBASE
 if not firebase_admin._apps:
     try:
         fb_credentials = dict(st.secrets["firebase"])
@@ -58,28 +64,33 @@ if not firebase_admin._apps:
         cred = credentials.Certificate(fb_credentials)
         firebase_admin.initialize_app(cred)
     except Exception as e:
-        st.error(f"Erreur : {e}")
+        st.error(f"Erreur connexion : {e}")
 
 db = firestore.client()
 
+# 3. LOGIQUE D'AUTHENTIFICATION
 if 'auth_success' not in st.session_state:
     st.session_state.auth_success = False
 
-# --- PAGE DE LOGIN (DESIGN CLUB) ---
+# --- INTERFACE DE CONNEXION ---
 if not st.session_state.auth_success:
+    # Centrage vertical
+    st.write("#")
     
-    # 1. Affichage du Logo (Remplace l'URL par la tienne ou le nom de ton fichier sur GitHub)
-    # Si le fichier est sur GitHub : st.image("logo_club.png", width=120)
-    st.markdown('<div class="logo-container">', unsafe_allow_html=True)
-    st.image("https://studio-7691886667-ec4b3.web.app/logo.png", width=150) # Tente de récupérer l'ancien logo
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    st.markdown("<h1>PROFIL COMBATTANT</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: white;'>Accès réservé aux membres de l'ASL-FFE</p>", unsafe_allow_html=True)
-
+    # On recrée la structure de ta Card
     with st.container():
+        # Logo
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            st.image("https://studio-7691886667-ec4b3.web.app/logo.png", width=150)
+        
+        st.markdown("<h1>PROFIL COMBATTANT</h1>", unsafe_allow_html=True)
+        
+        # Champs de saisie
         prenom = st.text_input("Prénom")
         code_acces = st.text_input("Code d'accès", type="password")
+        
+        st.write("#") # Espace
         
         if st.button("ACCÉDER AU PROFIL"):
             if prenom and code_acces:
@@ -92,22 +103,30 @@ if not st.session_state.auth_success:
                     st.session_state.code_valide = code_acces.lower()
                     st.rerun()
                 else:
-                    st.error("Code d'accès incorrect.")
+                    st.error("Code ou Prénom inconnu.")
 
-# --- PAGE PROFIL (APRÈS LOGIN) ---
+# --- INTERFACE PROFIL (UNE FOIS CONNECTÉ) ---
 else:
-    # On peut changer le fond pour la page profil si besoin
-    st.title(f"Salut {st.session_state.prenom_utilisateur} !")
-    
     doc_ref = db.collection("athletes").document(st.session_state.code_valide)
     doc = doc_ref.get()
-    data = json.loads(doc.to_dict()["json_data"])
-    match = data['history'][0]
-
-    # ... reste du code pour les graphiques ...
-    st.success(f"Match enregistré le {match['date'][:10]}")
-    st.metric("Explosivité", f"{match['metrics']['explosivite']}%")
     
-    if st.button("Déconnexion"):
-        st.session_state.auth_success = False
-        st.rerun()
+    if doc.exists:
+        # On récupère le texte JSON stocké
+        raw_data = doc.to_dict().get("json_data")
+        data = json.loads(raw_data)
+        match = data['history'][0]
+
+        st.title(f"Bonjour {st.session_state.prenom_utilisateur} !")
+        
+        # Exemple d'affichage des scores
+        c1, c2 = st.columns(2)
+        c1.metric("Ton Score", match['myScore'])
+        c2.metric("Adversaire", match['oppScore'])
+        
+        # Graphique
+        df = pd.DataFrame(match['exchanges'])
+        st.line_chart(df.set_index('exchange_num')['avg_wrist_v'])
+        
+        if st.button("Se déconnecter"):
+            st.session_state.auth_success = False
+            st.rerun()
