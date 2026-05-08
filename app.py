@@ -15,7 +15,9 @@ from datetime import datetime
 import os
 from typing import Dict, Optional
 import hashlib
- 
+import json
+import tempfile
+
 # === PAGE CONFIG ===
 st.set_page_config(
     page_title="ASL Vision Engine - Profils",
