@@ -1,71 +1,84 @@
 #!/usr/bin/env python3
-"""
-app.py - Streamlit Dashboard
-Affiche les profils et stats des combattants ASL Vision Engine.
-Authentification via code d'accès Firebase.
-"""
- 
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, firestore
-import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-from datetime import datetime
-import os
-from typing import Dict, Optional
 import hashlib
 import json
 import tempfile
-
-# === PAGE CONFIG ===
-st.set_page_config(
-    page_title="ASL Vision Engine - Profils",
-    page_icon="⚔️",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+import pandas as pd
+import plotly.graph_objects as go
+import plotly.express as px
  
-# === STYLES ===
+# 1. CONFIGURATION PAGE
+st.set_page_config(page_title="ASL-FFE Dashboard", layout="wide", initial_sidebar_state="collapsed")
+ 
+# 2. DESIGN - COULEURS ORIGINALES
 st.markdown("""
-<style>
-    :root {
-        --primary: #1f77b4;
-        --success: #2ca02c;
-        --danger: #d62728;
-        --accent: #ff7f0e;
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap');
+    
+    * { margin:0; padding:0; box-sizing: border-box; }
+    
+    html, body, [data-testid="stAppViewContainer"] { 
+        background-color: hsl(180, 25%, 15%) !important;
+        color: hsl(210, 20%, 95%) !important;
+        font-family: 'Space Grotesk', sans-serif !important;
     }
     
-    .metric-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 20px;
-        border-radius: 12px;
-        color: white;
-        text-align: center;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    [data-testid="stHeader"] { background-color: transparent !important; }
+    [data-testid="stToolbar"] { display: none !important; }
+    
+    h1, h2, h3, h4 { color: hsl(210, 20%, 95%) !important; }
+    
+    .stTabs [role="tablist"] { 
+        border-bottom: 2px solid hsl(180, 25%, 25%);
     }
     
-    .metric-value {
-        font-size: 2.5em;
-        font-weight: bold;
-        margin: 10px 0;
+    .stTabs [role="tab"][aria-selected="true"] {
+        color: hsl(182, 100%, 74%) !important;
+        border-bottom: 3px solid hsl(182, 100%, 74%) !important;
     }
     
-    .metric-label {
-        font-size: 0.9em;
-        opacity: 0.9;
+    .stMetric { 
+        background-color: hsl(180, 25%, 20%) !important;
+        border: 1px solid hsl(180, 25%, 25%) !important;
+        border-radius: 8px !important;
+        padding: 15px !important;
     }
     
-    .header-accent {
-        border-bottom: 3px solid #1f77b4;
-        padding-bottom: 10px;
-        margin-bottom: 20px;
+    .stButton>button {
+        background-color: hsl(182, 100%, 74%) !important;
+        color: hsl(180, 25%, 10%) !important;
+        border: none !important;
+        border-radius: 6px !important;
+        font-weight: 700 !important;
+        padding: 10px 20px !important;
+        width: 100% !important;
     }
-</style>
-""", unsafe_allow_html=True)
+    
+    .stButton>button:hover {
+        background-color: hsl(182, 100%, 60%) !important;
+    }
+    
+    .stDivider { border-top: 1px solid hsl(180, 25%, 25%) !important; }
+    
+    .stTextInput input {
+        background-color: hsl(180, 25%, 20%) !important;
+        border: 1px solid hsl(180, 25%, 25%) !important;
+        color: hsl(210, 20%, 95%) !important;
+        border-radius: 6px !important;
+    }
+    
+    .stTextInput input::placeholder {
+        color: hsl(180, 10%, 50%) !important;
+    }
+    
+    .icon-small { font-size: 1.2rem; margin-right: 4px; }
+    
+    </style>
+    """, unsafe_allow_html=True)
  
-# === FIREBASE INIT ===
-
+# 3. INITIALISATION FIREBASE
 if 'db' not in st.session_state:
     try:
         firebase_config = dict(st.secrets["firebase"])
@@ -81,219 +94,305 @@ if 'db' not in st.session_state:
     except Exception as e:
         st.error(f"❌ Erreur Firebase: {e}")
         st.stop()
-
+ 
 db = st.session_state.db
  
-# === FONCTIONS UTILITAIRES ===
-def hash_code(code: str) -> str:
-    """Hash un code d'accès."""
-    return hashlib.sha256(code.encode()).hexdigest()
+if 'auth_success' not in st.session_state:
+    st.session_state.auth_success = False
  
-@st.cache_data(ttl=300)
-def load_athlete_data(athlete_id: str) -> Optional[Dict]:
-    """Charge les données d'un combattant depuis Firebase."""
-    try:
-        doc = db.collection("athletes").document(athlete_id).get()
-        if doc.exists:
-            return doc.to_dict()
-        return None
-    except Exception as e:
-        st.error(f"Erreur Firebase: {e}")
-        return None
+# ═══════════════════════════════════════════════════════════════════════════════
+# PAGE CONNEXION
+# ═══════════════════════════════════════════════════════════════════════════════
  
-@st.cache_data(ttl=60)
-def load_all_athletes() -> list:
-    """Charge la liste de tous les combattants."""
-    try:
-        docs = db.collection("athletes").stream()
-        return [doc.id for doc in docs]
-    except Exception as e:
-        st.error(f"Erreur chargement combattants: {e}")
-        return []
- 
-def verify_access(athlete_id: str, provided_code: str) -> bool:
-    """Vérifie l'accès avec le code fourni."""
-    try:
-        doc = db.collection("athletes").document(athlete_id).get()
-        if not doc.exists:
-            return False
-        
-        stored_hash = doc.get("access_code_hash")
-        provided_hash = hash_code(provided_code)
-        
-        return stored_hash == provided_hash
-    except:
-        return False
- 
-def render_metric_card(label: str, value: str, color: str = "#667eea"):
-    """Affiche une carte métrique stylisée."""
-    st.markdown(f"""
-    <div class="metric-card" style="background: linear-gradient(135deg, {color} 0%, {color}dd 100%);">
-        <div class="metric-label">{label}</div>
-        <div class="metric-value">{value}</div>
-    </div>
-    """, unsafe_allow_html=True)
- 
-# === SESSION STATE ===
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
-if "current_athlete" not in st.session_state:
-    st.session_state.current_athlete = None
- 
-# === PAGE: AUTHENTIFICATION ===
-def page_login():
-    st.markdown("# ⚔️ ASL Vision Engine - Profils Combattants")
-    st.markdown("---")
-    
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        st.markdown("""
-        ### Bienvenue !
-        
-        Connectez-vous avec votre code d'accès personnel pour voir vos stats d'analyse.
-        """)
-        
-        # Sélection combattant
-        athletes = load_all_athletes()
-        if not athletes:
-            st.warning("⚠️ Aucun combattant disponible")
-            return
-        
-        selected_athlete = st.selectbox(
-            "Sélectionnez votre profil:",
-            athletes,
-            format_func=lambda x: x.replace("_", " ").title()
-        )
-        
-        # Code d'accès
-        access_code = st.text_input(
-            "Code d'accès:",
-            type="password",
-            help="Entrez votre code d'accès personnel (fourni par l'administrateur)"
-        )
-        
-        # Bouton connexion
-        if st.button("🔓 Se connecter", use_container_width=True):
-            if verify_access(selected_athlete, access_code):
-                st.session_state.authenticated = True
-                st.session_state.current_athlete = selected_athlete
-                st.success("✅ Connexion réussie!")
-                st.rerun()
-            else:
-                st.error("❌ Code d'accès invalide")
+if not st.session_state.auth_success:
+    col1, col2, col3 = st.columns([1, 1.8, 1])
     
     with col2:
-        st.info("""
-        **ℹ️ Besoin d'aide ?**
+        st.markdown("""
+            <div style="
+                background-color: hsl(180, 25%, 20%);
+                border: 1px solid hsl(180, 25%, 25%);
+                border-radius: 12px;
+                padding: 50px 40px;
+                text-align: center;
+            ">
+        """, unsafe_allow_html=True)
         
-        Contactez votre administrateur si vous n'avez pas reçu votre code d'accès.
-        """)
+        # Logo du club
+        st.image("https://studio-7691886667-ec4b3.web.app/logo.png", width=220)
+        
+        st.markdown("""
+            <h1 style="
+                color: hsl(210, 20%, 95%);
+                font-size: 1.9rem;
+                font-weight: 700;
+                margin-top: 25px;
+                margin-bottom: 8px;
+                letter-spacing: 0.05em;
+            ">ASL-FFE</h1>
+            <p style="
+                color: hsl(180, 10%, 60%);
+                font-size: 0.92rem;
+                margin-bottom: 35px;
+                letter-spacing: 0.04em;
+            ">PROFIL COMBATTANT</p>
+        """, unsafe_allow_html=True)
+        
+        prenom = st.text_input(
+            "Prénom",
+            placeholder="Entrez votre prénom",
+            key="login_prenom",
+            label_visibility="collapsed"
+        )
+        code = st.text_input(
+            "Code d'accès",
+            type="password",
+            placeholder="••••••••",
+            key="login_code",
+            label_visibility="collapsed"
+        )
+        
+        if st.button("🔓 ACCÉDER AU PROFIL", key="login_btn"):
+            if prenom and code:
+                athlete_id = prenom.lower()
+                try:
+                    doc = db.collection("athletes").document(athlete_id).get()
+                    if doc.exists:
+                        data = doc.to_dict()
+                        if hashlib.sha256(code.encode()).hexdigest() == data.get("access_code_hash"):
+                            st.session_state.auth_success = True
+                            st.session_state.athlete_data = data
+                            st.session_state.athlete_name = prenom
+                            st.rerun()
+                        else:
+                            st.error("❌ Code d'accès invalide")
+                    else:
+                        st.error("❌ Combattant non trouvé")
+                except Exception as e:
+                    st.error(f"❌ Erreur: {e}")
+            else:
+                st.warning("⚠️ Veuillez remplir tous les champs")
+        
+        st.markdown("</div>", unsafe_allow_html=True)
  
-# === PAGE: DASHBOARD PROFIL ===
-def page_dashboard():
-    athlete_id = st.session_state.current_athlete
-    athlete_data = load_athlete_data(athlete_id)
+# ═══════════════════════════════════════════════════════════════════════════════
+# PAGE PROFIL
+# ═══════════════════════════════════════════════════════════════════════════════
+ 
+else:
+    data = st.session_state.athlete_data
+    stats = json.loads(data.get("json_data", "{}")) if isinstance(data.get("json_data"), str) else data.get("json_data", {})
     
-    if not athlete_data:
-        st.error("❌ Impossible de charger le profil")
-        return
+    # En-tête avec logo + nom
+    col_header1, col_header2 = st.columns([3, 1])
     
-    # Header
-    st.markdown(f"# ⚔️ Profil: {athlete_data.get('name', 'N/A')}")
-    st.markdown(f"**Club:** {athlete_data.get('club', 'N/A')} | **Catégorie:** {athlete_data.get('category', 'N/A')}")
-    st.markdown("---")
+    with col_header1:
+        st.markdown(f"""
+            <div style="padding: 20px 0;">
+                <h1 style="
+                    color: hsl(182, 100%, 74%);
+                    font-size: 2.3rem;
+                    margin: 0;
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                ">
+                    ⚔️ {st.session_state.athlete_name.upper()}
+                </h1>
+                <p style="
+                    color: hsl(180, 10%, 60%);
+                    font-size: 0.92rem;
+                    margin-top: 6px;
+                ">
+                    {data.get('club', 'ASL-FFE')} • {data.get('category', 'N/A')}
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
     
-    # KPIs principaux
-    stats = athlete_data.get("stats", {})
+    with col_header2:
+        if st.button("🚪", key="logout_btn", help="Déconnexion"):
+            st.session_state.auth_success = False
+            st.session_state.athlete_data = None
+            st.rerun()
+    
+    st.divider()
+    
+    # STATS PRINCIPALES
+    st.markdown("""
+        <h2 style="
+            color: hsl(210, 20%, 95%);
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+        ">📊 Statistiques Principales</h2>
+    """, unsafe_allow_html=True)
+    
+    victories = stats.get("victories", 0) if isinstance(stats, dict) else 0
+    defeats = stats.get("defeats", 0) if isinstance(stats, dict) else 0
+    total = victories + defeats
+    winrate = (victories / total * 100) if total > 0 else 0
+    touches_scored = stats.get("total_touches_scored", 0) if isinstance(stats, dict) else 0
+    touches_received = stats.get("total_touches_received", 0) if isinstance(stats, dict) else 0
+    head_zone_pct = stats.get("head_zone_touches_percentage", 0) if isinstance(stats, dict) else 0
     
     col1, col2, col3, col4 = st.columns(4)
-    
     with col1:
-        victories = stats.get("victories", 0)
-        defeats = stats.get("defeats", 0)
-        total = victories + defeats
-        winrate = (victories / total * 100) if total > 0 else 0
-        st.metric("Win Rate", f"{winrate:.1f}%", f"{victories}W-{defeats}L")
-    
+        st.metric("🏆 Win Rate", f"{winrate:.1f}%", f"{victories}W-{defeats}L")
     with col2:
-        touches_scored = stats.get("total_touches_scored", 0)
-        st.metric("Touches Marquées", touches_scored)
-    
+        st.metric("🎯 Touches Marquées", int(touches_scored))
     with col3:
-        touches_received = stats.get("total_touches_received", 0)
-        st.metric("Touches Reçues", touches_received)
-    
+        st.metric("🛡️ Touches Reçues", int(touches_received))
     with col4:
-        head_zone_pct = stats.get("head_zone_touches_percentage", 0)
-        st.metric("Cible Tête %", f"{head_zone_pct:.1f}%")
+        st.metric("💡 Cible Tête %", f"{head_zone_pct:.1f}%")
     
-    st.markdown("---")
+    st.divider()
     
-    # Graphiques
-    col_graph1, col_graph2 = st.columns(2)
+    # ONGLETS
+    tab1, tab2, tab3 = st.tabs(["📈 Analyse", "⚡ Actions", "📊 Historique"])
     
-    # Graph 1: Répartition actions
-    with col_graph1:
-        st.subheader("📊 Répartition des Actions")
-        actions = athlete_data.get("actions_breakdown", {})
+    # ─── TAB 1: ANALYSE ──────────────────────────────────────────────────────
+    with tab1:
+        col_graph1, col_graph2 = st.columns(2)
+        
+        # Radar chart
+        with col_graph1:
+            st.markdown("**📊 Profil Physique**")
+            categories = ['Vitesse', 'Force', 'Technique', 'Tactique', 'Mental']
+            values = [
+                min(100, (touches_scored / max(touches_received, 1)) * 50 + 40),
+                80,
+                min(100, (winrate * 1.2)),
+                min(100, (victories * 10)),
+                85
+            ]
+            
+            fig_radar = go.Figure(data=go.Scatterpolar(
+                r=values,
+                theta=categories,
+                fill='toself',
+                line=dict(color='hsl(182, 100%, 74%)'),
+            ))
+            fig_radar.update_layout(
+                polar=dict(
+                    radialaxis=dict(visible=True, range=[0, 100]),
+                ),
+                paper_bgcolor='hsl(180, 25%, 20%)',
+                plot_bgcolor='hsl(180, 25%, 20%)',
+                font=dict(color='hsl(210, 20%, 95%)', size=10),
+                showlegend=False,
+                height=350,
+            )
+            st.plotly_chart(fig_radar, use_container_width=True, config={'displayModeBar': False})
+        
+        # Jauge explosivité
+        with col_graph2:
+            st.markdown("**⚡ Explosivité Sabre**")
+            explosivite = min(100, stats.get("explosivity", 75) if isinstance(stats, dict) else 75)
+            
+            fig_gauge = go.Figure(go.Indicator(
+                mode="gauge+number",
+                value=explosivite,
+                gauge=dict(
+                    axis=dict(range=[None, 100]),
+                    bar=dict(color='hsl(182, 100%, 74%)'),
+                ),
+                number=dict(font=dict(color='hsl(182, 100%, 74%)')),
+            ))
+            fig_gauge.update_layout(
+                paper_bgcolor='hsl(180, 25%, 20%)',
+                plot_bgcolor='hsl(180, 25%, 20%)',
+                font=dict(color='hsl(210, 20%, 95%)', size=11),
+                height=350,
+            )
+            st.plotly_chart(fig_gauge, use_container_width=True, config={'displayModeBar': False})
+    
+    # ─── TAB 2: ACTIONS ──────────────────────────────────────────────────────
+    with tab2:
+        actions = stats.get("actions_breakdown", {}) if isinstance(stats, dict) else {}
         
         if actions:
-            df_actions = pd.DataFrame(list(actions.items()), columns=["Action", "Nombre"])
-            fig = px.pie(
-                df_actions,
-                names="Action",
-                values="Nombre",
-                color_discrete_sequence=px.colors.qualitative.Set3
-            )
-            fig.update_traces(textposition='inside', textinfo='percent+label')
-            st.plotly_chart(fig, use_container_width=True)
+            col_pie1, col_pie2 = st.columns(2)
+            
+            with col_pie1:
+                st.markdown("**🎯 Répartition des Actions**")
+                df_actions = pd.DataFrame(list(actions.items()), columns=["Type", "Nombre"])
+                
+                fig_pie = px.pie(
+                    df_actions, 
+                    values='Nombre', 
+                    names='Type',
+                    hole=0.3,
+                    color_discrete_sequence=['hsl(182, 100%, 74%)', 'hsl(0, 100%, 50%)', 'hsl(120, 100%, 50%)', 'hsl(60, 100%, 50%)', 'hsl(240, 100%, 50%)']
+                )
+                fig_pie.update_layout(
+                    paper_bgcolor='hsl(180, 25%, 20%)',
+                    plot_bgcolor='hsl(180, 25%, 20%)',
+                    font=dict(color='hsl(210, 20%, 95%)', size=10),
+                    height=350,
+                )
+                st.plotly_chart(fig_pie, use_container_width=True, config={'displayModeBar': False})
+            
+            with col_pie2:
+                st.markdown("**📋 Statistiques Détaillées**")
+                fig_bar = px.bar(
+                    df_actions,
+                    x='Type',
+                    y='Nombre',
+                    color_discrete_sequence=['hsl(182, 100%, 74%)']
+                )
+                fig_bar.update_layout(
+                    paper_bgcolor='hsl(180, 25%, 20%)',
+                    plot_bgcolor='hsl(180, 25%, 20%)',
+                    font=dict(color='hsl(210, 20%, 95%)', size=10),
+                    showlegend=False,
+                    height=350,
+                    xaxis_title="",
+                    yaxis_title="Nombre"
+                )
+                st.plotly_chart(fig_bar, use_container_width=True, config={'displayModeBar': False})
         else:
-            st.info("Aucune donnée d'action disponible")
+            st.info("⚠️ Aucune donnée d'action disponible")
     
-    # Graph 2: Tendance performance
-    with col_graph2:
-        st.subheader("📈 Tendance de Performance")
-        trend = athlete_data.get("performance_trend", [])
+    # ─── TAB 3: HISTORIQUE ──────────────────────────────────────────────────
+    with tab3:
+        trend = stats.get("performance_trend", []) if isinstance(stats, dict) else []
         
-        if trend:
+        if trend and isinstance(trend, list) and len(trend) > 0:
+            st.markdown("**📈 Évolution des Performances**")
             df_trend = pd.DataFrame(trend)
-            # Supposer que trend contient des champs date et score
-            fig = px.line(
-                df_trend,
-                x="date" if "date" in df_trend.columns else df_trend.index,
-                y="score" if "score" in df_trend.columns else df_trend.columns[0],
-                markers=True,
-                title="Score au fil du temps"
-            )
-            st.plotly_chart(fig, use_container_width=True)
+            
+            if 'touches_scored' in df_trend.columns and 'touches_received' in df_trend.columns:
+                fig_trend = go.Figure()
+                
+                fig_trend.add_trace(go.Scatter(
+                    x=df_trend.index,
+                    y=df_trend['touches_scored'],
+                    mode='lines+markers',
+                    name='Touches Marquées',
+                    line=dict(color='hsl(120, 100%, 50%)', width=3),
+                    marker=dict(size=8, color='hsl(120, 100%, 50%)')
+                ))
+                
+                fig_trend.add_trace(go.Scatter(
+                    x=df_trend.index,
+                    y=df_trend['touches_received'],
+                    mode='lines+markers',
+                    name='Touches Reçues',
+                    line=dict(color='hsl(0, 100%, 50%)', width=3),
+                    marker=dict(size=8, color='hsl(0, 100%, 50%)')
+                ))
+                
+                fig_trend.update_layout(
+                    paper_bgcolor='hsl(180, 25%, 20%)',
+                    plot_bgcolor='hsl(180, 25%, 20%)',
+                    font=dict(color='hsl(210, 20%, 95%)', size=10),
+                    hovermode='x unified',
+                    height=400,
+                    xaxis_title="",
+                    yaxis_title="Touches"
+                )
+                
+                st.plotly_chart(fig_trend, use_container_width=True, config={'displayModeBar': False})
+            else:
+                st.dataframe(df_trend, use_container_width=True)
         else:
-            st.info("Aucune données de tendance disponible")
-    
-    st.markdown("---")
-    
-    # Infos métadonnées
-    with st.expander("ℹ️ Infos Techniques"):
-        col_info1, col_info2 = st.columns(2)
-        with col_info1:
-            st.write(f"**ID Combattant:** `{athlete_id}`")
-            st.write(f"**Version Données:** {athlete_data.get('version', 'N/A')}")
-        with col_info2:
-            st.write(f"**Créé:** {athlete_data.get('created_at', 'N/A')}")
-            st.write(f"**Mis à jour:** {athlete_data.get('updated_at', 'N/A')}")
-    
-    # Bouton déconnexion
-    if st.button("🔒 Se déconnecter", use_container_width=True):
-        st.session_state.authenticated = False
-        st.session_state.current_athlete = None
-        st.rerun()
- 
-# === ROUTER ===
-def main():
-    if not st.session_state.authenticated:
-        page_login()
-    else:
-        page_dashboard()
- 
-if __name__ == "__main__":
-    main()
+            st.info("⚠️ Aucun historique disponible")
