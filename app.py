@@ -63,26 +63,24 @@ st.markdown("""
 """, unsafe_allow_html=True)
  
 # === FIREBASE INIT ===
-@st.cache_resource
-def init_firebase():
-    """Initialise Firebase une seule fois."""
-    creds_path = os.getenv("FIREBASE_CREDS_PATH", "firebase_creds.json")
-    
-    if not os.path.exists(creds_path):
-        st.error(f"❌ Firebase credentials not found: {creds_path}")
-        st.stop()
-    
-    if not firebase_admin.get_app():
+
+if 'db' not in st.session_state:
+    try:
+        firebase_config = dict(st.secrets["firebase"])
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            json.dump(firebase_config, f)
+            temp_file = f.name
         try:
-            cred = credentials.Certificate(creds_path)
+            firebase_admin.get_app()
+        except ValueError:
+            cred = credentials.Certificate(temp_file)
             firebase_admin.initialize_app(cred)
-        except Exception as e:
-            st.error(f"❌ Firebase init error: {e}")
-            st.stop()
-    
-    return firestore.client()
- 
-db = init_firebase()
+        st.session_state.db = firestore.client()
+    except Exception as e:
+        st.error(f"❌ Erreur Firebase: {e}")
+        st.stop()
+
+db = st.session_state.db
  
 # === FONCTIONS UTILITAIRES ===
 def hash_code(code: str) -> str:
