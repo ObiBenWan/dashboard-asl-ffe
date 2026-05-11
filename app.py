@@ -203,7 +203,12 @@ if not st.session_state.auth_success:
 # ═══════════════════════════════════════════════════════════════════════════════
  
 else:
-    import os
-    _profil_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "profil.py")
-    with open(_profil_path, encoding="utf-8") as _f:
-        exec(compile(_f.read(), _profil_path, "exec"), globals())
+    import os, pathlib
+    _here = pathlib.Path(__file__).parent.resolve()
+    _profil_path = _here / "profil.py"
+    if not _profil_path.exists():
+        _profil_path = pathlib.Path("profil.py").resolve()
+    if _profil_path.exists():
+        exec(compile(_profil_path.read_text(encoding="utf-8"), str(_profil_path), "exec"), globals())
+    else:
+        st.error(f"profil.py introuvable : {_profil_path}")
