@@ -22,7 +22,7 @@ import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
 import re
-
+ 
 # ─────────────────────────────────────────────────────────────────────────────
 # THEME identique a T dans CareerProfile.js
 # ─────────────────────────────────────────────────────────────────────────────
@@ -39,7 +39,7 @@ WARNING  = 'hsl( 38,  92%, 60%)'
 DANGER   = 'hsl(  4,  90%, 58%)'
 AMBER    = 'hsl( 43,  96%, 56%)'
 SUCCESS  = 'hsl(142, 71%, 55%)'
-
+ 
 FORME_LABELS = {'GARDIEN':'Gardien','ECLAIREUR':'Eclaireur','CONQUERANT':'Conquerant','SENTINELLE':'Sentinelle'}
 FORME_COLORS = {'GARDIEN':'#3b82f6','ECLAIREUR':'#10b981','CONQUERANT':'#ef4444','SENTINELLE':'#f59e0b'}
 FORME_DESC = {
@@ -49,7 +49,7 @@ FORME_DESC = {
     'SENTINELLE': "Attaquant attracteur : reactivite et precision, gere la distance et l'initiative.",
 }
 FORMES = list(FORME_LABELS.keys())
-
+ 
 SEUILS_V09 = {
     'explosivite':               {'label':'Explosivite',         'unite':'/100', 'max':100,
                                   's':{'d':40,'r':60,'n':75,'e':90}},
@@ -72,7 +72,7 @@ SEUILS_V09 = {
     'tacticalEfficiency':        {'label':'Efficacite tactique', 'unite':'%',    'max':100,
                                   's':{'d':25,'r':45,'n':60,'e':75}},
 }
-
+ 
 PROFIL_REF = {
     'GARDIEN':    [20,25,35,20],
     'ECLAIREUR':  [30,20,20,30],
@@ -81,7 +81,7 @@ PROFIL_REF = {
 }
 ATTR_LABELS = ['Mobilite','Precision','Reactivite','Explosivite']
 REF_MAX = max(max(v) for v in PROFIL_REF.values())
-
+ 
 def niv(key, val):
     ref = SEUILS_V09.get(key)
     if not ref or val is None: return {'l':'—','c':SLATE,'pct':0}
@@ -92,7 +92,7 @@ def niv(key, val):
     if val>=s['r']: return {'l':'Regional','c':VERT,       'pct':pct}
     if val>0:       return {'l':'Club',    'c':SLATE,      'pct':pct}
     return               {'l':'—',        'c':SLATE,      'pct':0}
-
+ 
 def attr_vals(m):
     if not m: return [0,0,0,0]
     expl = m.get('explosivite') or m.get('explosiveness') or \
@@ -103,12 +103,12 @@ def attr_vals(m):
         min(100,round(m.get('engagementRate',0) or m.get('reactivityScore',0) or 0)),
         min(100,round(expl or 0)),
     ]
-
+ 
 LAYOUT = dict(
     paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
     font=dict(color=SLATE_HI,size=10), margin=dict(l=8,r=8,t=16,b=8),
 )
-
+ 
 # ─────────────────────────────────────────────────────────────────────────────
 # CSS
 # ─────────────────────────────────────────────────────────────────────────────
@@ -130,35 +130,35 @@ h1,h2,h3{{color:{WHITE}!important}}
 .seuils{{display:flex;justify-content:space-between;
     font-size:0.44rem;color:{BORDER};margin-bottom:4px;}}
 </style>""", unsafe_allow_html=True)
-
+ 
 # ─────────────────────────────────────────────────────────────────────────────
 # AUTH
 # ─────────────────────────────────────────────────────────────────────────────
 if not st.session_state.get('auth_success'):
     st.switch_page("app.py")
-
+ 
 ath  = st.session_state.get('athlete_data', {})
 raw  = ath.get('json_data','{}')
 data = json.loads(raw) if isinstance(raw,str) else (raw or {})
 hist = data.get('history',[])
 nb   = len(hist)
-
+ 
 def avg(key, default=0):
     vs=[h.get('metrics',{}).get(key) for h in hist if h.get('metrics',{}).get(key) is not None]
     return round(sum(vs)/len(vs),1) if vs else default
-
+ 
 avgM = {k:avg(k) for k in SEUILS_V09}
 avgM['p95WristVelocity'] = avg('p95WristVelocity')
 avgM['explosivite'] = avgM.get('explosivite') or avg('explosiveness') or \
     round(min(100,avgM['p95WristVelocity']/900*100))
-
+ 
 avals   = attr_vals(avgM)
 fpcts   = {f:sum(1 for h in hist if h.get('profil_dominant','').upper()==f) for f in FORMES}
 total_f = sum(fpcts.values()) or 1
 fpcts   = {f:round(v/total_f*100) for f,v in fpcts.items()}
 dominant = max(fpcts,key=fpcts.get) if any(fpcts.values()) else None
 dom_color = FORME_COLORS.get(dominant,CYAN) if dominant else CYAN
-
+ 
 wins   = sum(1 for h in hist if h.get('result')=='win')
 losses = sum(1 for h in hist if h.get('result')=='loss')
 wr     = round(wins/max(nb,1)*100,1)
@@ -167,7 +167,7 @@ tC = data.get('touches_C',0); tB=data.get('touches_B',0); tA=data.get('touches_A
 scored   = data.get('total_touches_scored',0)
 received = data.get('total_touches_received',0)
 sanctions_total = (data.get('actions_breakdown') or {}).get('Sanctions',0)
-
+ 
 # ─────────────────────────────────────────────────────────────────────────────
 # HEADER
 # ─────────────────────────────────────────────────────────────────────────────
@@ -195,18 +195,18 @@ with ch2:
     if st.button("Deconnexion"):
         st.session_state.auth_success=False; st.session_state.athlete_data=None
         st.switch_page("app.py")
-
+ 
 st.markdown(f'<hr style="border-color:{BORDER};margin:0 0 14px">',unsafe_allow_html=True)
-
+ 
 if nb==0:
     st.info("Aucun combat analyse. Effectuez une session et sauvegardez le profil.")
     st.stop()
-
+ 
 # ─────────────────────────────────────────────────────────────────────────────
 # COL GAUCHE : Attributs  |  COL DROITE : Donut + Radar
 # ─────────────────────────────────────────────────────────────────────────────
 col_l, col_r = st.columns(2)
-
+ 
 with col_l:
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown('<div class="sec">Attributs de Performance Moyens</div>', unsafe_allow_html=True)
@@ -237,7 +237,7 @@ with col_l:
         <div class="seuils"><span>Club</span><span>Regional</span><span>National</span><span>Elite</span></div>
         """, unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
-
+ 
 with col_r:
     # Donut profil
     st.markdown('<div class="card">', unsafe_allow_html=True)
@@ -253,7 +253,7 @@ with col_r:
     ))
     fig_d.update_layout(**LAYOUT, height=200, showlegend=False)
     st.plotly_chart(fig_d, use_container_width=True, config={'displayModeBar':False})
-
+ 
     # Toile d'Araignee
     st.markdown('<div class="sec" style="margin-top:6px">Toile d\'Araignee — Combattant vs Profils de Reference</div>',
                 unsafe_allow_html=True)
@@ -270,7 +270,8 @@ with col_r:
         fill='toself', mode='lines+markers',
         name=name or 'Combattant',
         line=dict(color=dom_color,width=2.5),
-        fillcolor=dom_color+'26', marker=dict(size=5),
+        fillcolor='rgba(14,165,233,0.12)',  # cyan semi-transparent
+        marker=dict(size=5),
     ))
     fig_r.update_layout(**LAYOUT, height=230,
         polar=dict(
@@ -284,7 +285,7 @@ with col_r:
     )
     st.plotly_chart(fig_r, use_container_width=True, config={'displayModeBar':False})
     st.markdown('</div>', unsafe_allow_html=True)
-
+ 
 # ─────────────────────────────────────────────────────────────────────────────
 # EVOLUTION METRIQUES
 # ─────────────────────────────────────────────────────────────────────────────
@@ -310,12 +311,12 @@ if nb > 1:
         legend=dict(bgcolor='rgba(0,0,0,0)',font=dict(color=SLATE_HI,size=9)))
     st.plotly_chart(fig_ev, use_container_width=True, config={'displayModeBar':False})
     st.markdown('</div>', unsafe_allow_html=True)
-
+ 
 # ─────────────────────────────────────────────────────────────────────────────
 # BILAN PROFIL ADVERSE + FATIGUE
 # ─────────────────────────────────────────────────────────────────────────────
 cb1, cb2 = st.columns(2)
-
+ 
 with cb1:
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown('<div class="sec">Bilan par Profil Adverse</div>', unsafe_allow_html=True)
@@ -333,7 +334,7 @@ with cb1:
     else:
         st.info("Donnees adversaire non disponibles")
     st.markdown('</div>', unsafe_allow_html=True)
-
+ 
 with cb2:
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown('<div class="sec">Fatigue par Phase de Combat</div>', unsafe_allow_html=True)
@@ -350,17 +351,17 @@ with cb2:
         st.markdown(f'<p style="font-size:0.63rem;color:{end_col}">{msg}</p>',unsafe_allow_html=True)
     with cb_:
         fig_g=go.Figure(go.Indicator(mode="gauge+number",value=min(100,avg_end),
-            gauge=dict(axis=dict(range=[0,100]),bar=dict(color=end_col),bgcolor=SURFACE),
+            gauge=dict(axis=dict(range=[0,100]),bar=dict(color=end_col),bgcolor='rgba(30,40,60,1)'),
             number=dict(font=dict(color=end_col,size=26))))
         fig_g.update_layout(**LAYOUT,height=130)
         st.plotly_chart(fig_g,use_container_width=True,config={'displayModeBar':False})
     st.markdown('</div>', unsafe_allow_html=True)
-
+ 
 # ─────────────────────────────────────────────────────────────────────────────
 # ACTIONS + TAUX DE REUSSITE
 # ─────────────────────────────────────────────────────────────────────────────
 ca1, ca2 = st.columns(2)
-
+ 
 with ca1:
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown('<div class="sec">Evolution des Actions (%) — Attaques vs Defense</div>', unsafe_allow_html=True)
@@ -385,7 +386,7 @@ with ca1:
     else:
         st.info("Plusieurs combats necessaires")
     st.markdown('</div>', unsafe_allow_html=True)
-
+ 
 with ca2:
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown('<div class="sec">Taux de Reussite des Actions</div>', unsafe_allow_html=True)
@@ -400,12 +401,12 @@ with ca2:
     ]
     st.dataframe(pd.DataFrame(rows),use_container_width=True,hide_index=True)
     st.markdown('</div>', unsafe_allow_html=True)
-
+ 
 # ─────────────────────────────────────────────────────────────────────────────
 # CIBLES VISEES + TOUCHES RECUES
 # ─────────────────────────────────────────────────────────────────────────────
 cz1, cz2 = st.columns(2)
-
+ 
 with cz1:
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown('<div class="sec">Cibles Visees — Touches marquees (moy/combat)</div>', unsafe_allow_html=True)
@@ -419,7 +420,7 @@ with cz1:
         xaxis=dict(gridcolor=BORDER),yaxis=dict(autorange='reversed'))
     st.plotly_chart(fig_cv,use_container_width=True,config={'displayModeBar':False})
     st.markdown('</div>', unsafe_allow_html=True)
-
+ 
 with cz2:
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown(f'<div class="sec" style="color:{DANGER}">Touches Recues (Moyenne / combat)</div>',
@@ -437,7 +438,7 @@ with cz2:
         xaxis=dict(gridcolor=BORDER),yaxis=dict(autorange='reversed'))
     st.plotly_chart(fig_cr,use_container_width=True,config={'displayModeBar':False})
     st.markdown('</div>', unsafe_allow_html=True)
-
+ 
 # ─────────────────────────────────────────────────────────────────────────────
 # ANALYSE SABRE
 # ─────────────────────────────────────────────────────────────────────────────
@@ -455,7 +456,7 @@ with cs2: st.metric("Angle moyen",f"{ang} deg")
 with cs3: st.metric("Zone dominante",zdm)
 with cs4: st.metric("Contacts tranchant",trt)
 st.markdown('</div>', unsafe_allow_html=True)
-
+ 
 # ─────────────────────────────────────────────────────────────────────────────
 # FAUTES COMMISES
 # ─────────────────────────────────────────────────────────────────────────────
@@ -473,18 +474,18 @@ with cf3:
                 f'<span style="color:{scol};font-weight:700">{sniv}</span></div>',
                 unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
-
+ 
 # ─────────────────────────────────────────────────────────────────────────────
 # PLAN COACHING IA
 # ─────────────────────────────────────────────────────────────────────────────
 st.markdown('<div class="card">', unsafe_allow_html=True)
 st.markdown(f'<div class="sec" style="color:{VERT}">Plan Coaching — Analyse IA</div>', unsafe_allow_html=True)
-
+ 
 engine = st.radio("Moteur IA",["Claude API (~0.01€/appel)","Ollama local (gratuit)"],
                   horizontal=True, label_visibility="collapsed")
 if engine=="Ollama local (gratuit)":
     ol_model = st.selectbox("Modele Ollama",["llama3.2","mistral","qwen2.5"])
-
+ 
 if st.button("Generer le plan coaching IA", type="primary"):
     summary = (
         f"Combattant: {name} | Combats: {nb} | Win Rate: {wr}%\n"
@@ -518,7 +519,7 @@ if st.button("Generer le plan coaching IA", type="primary"):
                 r=requests.post("http://localhost:11434/api/generate",
                     json={"model":ol_model,"prompt":prompt,"stream":False},timeout=60)
                 txt=r.json().get('response','{}')
-
+ 
             m=re.search(r'\{.*\}',txt,re.DOTALL)
             if m:
                 c=json.loads(m.group())
@@ -542,5 +543,5 @@ if st.button("Generer le plan coaching IA", type="primary"):
                 st.text(txt)
         except Exception as e:
             st.error(f"Erreur IA : {e}")
-
+ 
 st.markdown('</div>', unsafe_allow_html=True)
