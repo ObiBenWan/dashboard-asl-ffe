@@ -22,6 +22,70 @@ import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
 import re
+import math
+ 
+import math
+ 
+def _donut_svg(data, size=160, thick=30):
+    r = (size - thick) / 2
+    cx = cy = size / 2
+    circ = 2 * math.pi * r
+    total = sum(d['value'] for d in data) or 1
+    off = 0
+    slices = []
+    for d in data:
+        pct = d['value'] / total
+        dash = pct * circ
+        gap  = circ - dash
+        rot  = off * 360 - 90
+        slices.append(dict(label=d['label'],value=d['value'],color=d['color'],
+                           dash=dash,gap=gap,rot=rot,pct=round(pct*100)))
+        off += pct
+    dom = max(slices, key=lambda s:s['pct'])
+ 
+    circles = ''
+    for s in slices:
+        circles += (
+            '<circle cx="' + str(cx) + '" cy="' + str(cy) +
+            '" r="' + str(round(r,1)) + '" fill="none" stroke="' + s['color'] +
+            '" stroke-width="' + str(thick) +
+            '" stroke-dasharray="' + str(round(s['dash'],1)) + ' ' + str(round(s['gap'],1)) +
+            '" style="transform:rotate(' + str(round(s['rot'],1)) +
+            'deg);transform-origin:' + str(cx) + 'px ' + str(cy) + 'px"/>'
+        )
+ 
+    legend = ''
+    for d in data:
+        legend += (
+            '<div style="margin-bottom:7px">'
+            '<div style="display:flex;justify-content:space-between;margin-bottom:2px">'
+            '<div style="display:flex;align-items:center;gap:6px">'
+            '<div style="width:8px;height:8px;border-radius:2px;background:' + d['color'] + '"></div>'
+            '<span style="font-size:0.65rem;color:' + SLATE_HI + '">' + d['label'] + '</span></div>'
+            '<span style="font-size:0.7rem;font-weight:700;color:' + d['color'] + '">' + str(d['value']) + '%</span></div>'
+            '<div style="height:4px;background:' + BORDER + ';border-radius:2px">'
+            '<div style="height:100%;width:' + str(d['value']) + '%;background:' + d['color'] +
+            ';border-radius:2px;box-shadow:0 0 5px ' + d['color'] + '55"></div></div></div>'
+        )
+ 
+    return (
+        '<div style="display:flex;align-items:center;gap:20px">'
+        '<div style="position:relative;flex-shrink:0">'
+        '<svg width="' + str(size) + '" height="' + str(size) + '">'
+        '<circle cx="' + str(cx) + '" cy="' + str(cy) + '" r="' + str(round(r,1)) +
+        '" fill="none" stroke="' + BORDER + '" stroke-width="' + str(thick) + '"/>'
+        + circles +
+        '<text x="' + str(cx) + '" y="' + str(cy-7) +
+        '" text-anchor="middle" dominant-baseline="middle"'
+        ' font-size="14" font-weight="800" fill="' + WHITE + '">' + str(dom['pct']) + '%</text>'
+        '<text x="' + str(cx) + '" y="' + str(cy+9) +
+        '" text-anchor="middle" dominant-baseline="middle"'
+        ' font-size="8" fill="' + dom['color'] + '">' + dom['label'] + '</text>'
+        '</svg></div>'
+        '<div style="flex:1">' + legend + '</div>'
+        '</div>'
+    )
+ 
  
 # ─────────────────────────────────────────────────────────────────────────────
 # THEME identique a T dans CareerProfile.js
@@ -355,6 +419,49 @@ with cb2:
             number=dict(font=dict(color=end_col,size=26))))
         fig_g.update_layout(**LAYOUT,height=130)
         st.plotly_chart(fig_g,use_container_width=True,config={'displayModeBar':False})
+    st.markdown('</div>', unsafe_allow_html=True)
+ 
+ 
+# Initiative + Reaction pression (donuts)
+ci1, ci2 = st.columns(2)
+ 
+with ci1:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="sec">Gestion de l''Initiative (Moyenne)</div>', unsafe_allow_html=True)
+    pression_pct   = round(avgM.get('pressureRatio',0) or avgM.get('pressurePercentage',0) or 0)
+    attraction_pct = round(avgM.get('attractionRatio',0) or avgM.get('attractionPercentage',0) or 0)
+    neutral_pct    = max(0, 100 - pression_pct - attraction_pct)
+    init_data = [
+        {'label':'Pression',   'value':pression_pct,   'color':ROUGE},
+        {'label':'Neutre',     'value':neutral_pct,     'color':SLATE},
+        {'label':'Attraction', 'value':attraction_pct,  'color':'#a855f7'},
+    ]
+    if any(d['value']>0 for d in init_data):
+        st.markdown(_donut_svg(init_data, 160, 30), unsafe_allow_html=True)
+    else:
+        st.info("Donnees insuffisantes")
+    st.markdown('</div>', unsafe_allow_html=True)
+ 
+with ci2:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="sec">Reaction a la Pression (Endurance)</div>', unsafe_allow_html=True)
+    end_v = min(100, round(avgM.get('enduranceIndex',0) or avgM.get('enduranceFactor',0) or 0))
+    fat_v = max(0, 100 - end_v)
+    press_data = [
+        {'label':'Endurance', 'value':end_v, 'color':VERT},
+        {'label':'Fatigue',   'value':fat_v, 'color':'#7f1d1d'},
+    ]
+    if any(d['value']>0 for d in press_data):
+        st.markdown(_donut_svg(press_data, 160, 30), unsafe_allow_html=True)
+        ec = SUCCESS if end_v>=85 else WARNING
+        msg2 = ('Excellent maintien' if end_v>=90
+                else 'Legere baisse en fin de combat' if end_v>=70
+                else 'Chute significative — priorite endurance specifique')
+        st.markdown('<div style="margin-top:8px;padding:8px 12px;border-radius:7px;'
+                    'background:' + SURFACE + ';font-size:0.63rem;color:' + ec + '">'
+                    + msg2 + '</div>', unsafe_allow_html=True)
+    else:
+        st.info("Donnees insuffisantes")
     st.markdown('</div>', unsafe_allow_html=True)
  
 # ─────────────────────────────────────────────────────────────────────────────
