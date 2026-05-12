@@ -75,8 +75,6 @@ def _donut_svg(data, size=160, thick=30):
         '<circle cx="' + str(cx) + '" cy="' + str(cy) + '" r="' + str(round(r,1)) +
         '" fill="none" stroke="' + BORDER + '" stroke-width="' + str(thick) + '"/>'
         + circles +
-        '" text-anchor="middle" dominant-baseline="middle"'
-        ' font-size="8" fill="' + dom['color'] + '">' + dom['label'] + '</text>'
         '</svg></div>'
         '<div style="flex:1">' + legend + '</div>'
         '</div>'
@@ -686,3 +684,4 @@ if st.button("Generer le plan coaching IA", type="primary"):
             st.error(f"Erreur IA : {e}")
  
 st.markdown('</div>', unsafe_allow_html=True)
+ 
