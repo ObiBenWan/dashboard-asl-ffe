@@ -199,7 +199,7 @@ h1,h2,h3{{color:{WHITE}!important}}
 # AUTH
 # ─────────────────────────────────────────────────────────────────────────────
 if not st.session_state.get('auth_success'):
-    st.switch_page("app.py")
+    st.stop()
  
 ath  = st.session_state.get('athlete_data', {})
 raw  = ath.get('json_data','{}')
@@ -257,8 +257,9 @@ with ch1:
     """, unsafe_allow_html=True)
 with ch2:
     if st.button("Deconnexion"):
-        st.session_state.auth_success=False; st.session_state.athlete_data=None
-        st.switch_page("app.py")
+        st.session_state.auth_success = False
+        st.session_state.athlete_data = None
+        st.rerun()
  
 st.markdown(f'<hr style="border-color:{BORDER};margin:0 0 14px">',unsafe_allow_html=True)
  
