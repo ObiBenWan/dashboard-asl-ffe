@@ -75,10 +75,6 @@ def _donut_svg(data, size=160, thick=30):
         '<circle cx="' + str(cx) + '" cy="' + str(cy) + '" r="' + str(round(r,1)) +
         '" fill="none" stroke="' + BORDER + '" stroke-width="' + str(thick) + '"/>'
         + circles +
-        '<text x="' + str(cx) + '" y="' + str(cy-7) +
-        '" text-anchor="middle" dominant-baseline="middle"'
-        ' font-size="14" font-weight="800" fill="' + WHITE + '">' + str(dom['pct']) + '%</text>'
-        '<text x="' + str(cx) + '" y="' + str(cy+9) +
         '" text-anchor="middle" dominant-baseline="middle"'
         ' font-size="8" fill="' + dom['color'] + '">' + dom['label'] + '</text>'
         '</svg></div>'
