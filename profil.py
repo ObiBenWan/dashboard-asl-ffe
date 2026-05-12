@@ -157,6 +157,42 @@ def niv(key, val):
     if val>0:       return {'l':'Club',    'c':SLATE,      'pct':pct}
     return               {'l':'—',        'c':SLATE,      'pct':0}
  
+ 
+def scorer_forme(m, arb=None):
+    """Traduit exactement scorerForme de CoachShared.js"""
+    if not m:
+        return {'GARDIEN':25,'ECLAIREUR':25,'CONQUERANT':25,'SENTINELLE':25}
+    arb_tot = ((arb.get('attaques',0) or 0) +
+               (arb.get('parades',0) or 0) +
+               (arb.get('ripostes',0) or 0)) if arb else 0
+    if arb_tot > 0:
+        att_pct = (arb.get('attaques',0) or 0) / arb_tot
+        def_pct = ((arb.get('parades',0) or 0) + (arb.get('ripostes',0) or 0)) / arb_tot
+    else:
+        pression   = m.get('pressureRatio',0) or m.get('pressurePercentage',0) or 0
+        attraction = m.get('attractionRatio',0) or m.get('attractionPercentage',0) or 0
+        precision  = m.get('touchSuccessRate',0) or 0
+        s_att = pression*0.50 + precision*0.30 + max(0,50-attraction)*0.20
+        s_def = attraction*0.55 + (m.get('riposteRate',0) or 0)*0.30 + max(0,50-pression)*0.15
+        t = (s_att+s_def) or 1
+        att_pct = s_att/t; def_pct = s_def/t
+    pression   = m.get('pressureRatio',0) or m.get('pressurePercentage',0) or 0
+    attraction = m.get('attractionRatio',0) or m.get('attractionPercentage',0) or 0
+    mobilite   = min(100,(m.get('lateralMoves',0) or 0)*2)
+    engagement = m.get('engagementRate',0) or 0
+    s_press = pression*0.45 + mobilite*0.30 + engagement*0.25
+    s_attr  = attraction*0.60 + max(0,40-pression)*0.40
+    t2 = (s_press+s_attr) or 1
+    pres_pct = s_press/t2; attr_pct = s_attr/t2
+    raw = {
+        'GARDIEN':    def_pct*attr_pct,
+        'ECLAIREUR':  def_pct*pres_pct,
+        'CONQUERANT': att_pct*pres_pct,
+        'SENTINELLE': att_pct*attr_pct,
+    }
+    tot = sum(raw.values()) or 1
+    return {k:round(v/tot*100) for k,v in raw.items()}
+ 
 def attr_vals(m):
     if not m: return [0,0,0,0]
     expl = m.get('explosivite') or m.get('explosiveness') or \
@@ -217,9 +253,9 @@ avgM['explosivite'] = avgM.get('explosivite') or avg('explosiveness') or \
     round(min(100,avgM['p95WristVelocity']/900*100))
  
 avals   = attr_vals(avgM)
-fpcts   = {f:sum(1 for h in hist if h.get('profil_dominant','').upper()==f) for f in FORMES}
-total_f = sum(fpcts.values()) or 1
-fpcts   = {f:round(v/total_f*100) for f,v in fpcts.items()}
+# Calculer les forme_pct avec la vraie fonction scorerForme (CoachShared.js)
+all_fp = [scorer_forme(h.get('metrics') or {}, h.get('arbitrage') or {}) for h in hist]
+fpcts  = {f:round(sum(fp.get(f,0) for fp in all_fp)/max(len(all_fp),1)) for f in FORMES} if all_fp else {f:0 for f in FORMES}
 dominant = max(fpcts,key=fpcts.get) if any(fpcts.values()) else None
 dom_color = FORME_COLORS.get(dominant,CYAN) if dominant else CYAN
  
