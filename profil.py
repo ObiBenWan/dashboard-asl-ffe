@@ -254,7 +254,8 @@ avgM['explosivite'] = avgM.get('explosivite') or avg('explosiveness') or \
  
 avals   = attr_vals(avgM)
 # Calculer les forme_pct avec la vraie fonction scorerForme (CoachShared.js)
-all_fp = [scorer_forme(h.get('metrics') or {}, h.get('arbitrage') or {}) for h in hist]
+# React utilise h.arbAdv (propres actions du combattant)
+all_fp = [scorer_forme(h.get('metrics') or {}, h.get('arbAdv') or {}) for h in hist]
 fpcts  = {f:round(sum(fp.get(f,0) for fp in all_fp)/max(len(all_fp),1)) for f in FORMES} if all_fp else {f:0 for f in FORMES}
 dominant = max(fpcts,key=fpcts.get) if any(fpcts.values()) else None
 dom_color = FORME_COLORS.get(dominant,CYAN) if dominant else CYAN
