@@ -196,33 +196,32 @@ with ch2:
         st.session_state.auth_success=False; st.session_state.athlete_data=None
         st.switch_page("app.py")
 
-    # ── Vidéo highlight du combattant ────────────────────────────────────
-    # Fichier : assets/videos/{slug_nom}_highlight.mp4 dans le repo GitHub
-    # Ex: assets/videos/leandre_highlight.mp4, guillaume_highlight.mp4
-    slug_video = name.lower() \
-        .replace('é','e').replace('è','e').replace('ê','e') \
-        .replace('à','a').replace('â','a') \
-        .replace('ù','u').replace('û','u') \
-        .replace('î','i').replace('ï','i') \
-        .replace('ô','o') \
-        .replace(' ','-').replace("'",'')
-    video_path = f"assets/videos/{slug_video}_highlight.mp4"
-    import os as _os
-    import base64 as _b64
-    if _os.path.exists(video_path):
-        # Encoder en base64 et injecter via HTML5 — loop + autoplay garanti
+st.markdown(f'<hr style="border-color:{BORDER};margin:0 0 14px">',unsafe_allow_html=True)
+
+# ── Vidéo highlight du combattant ────────────────────────────────────────────
+# Fichier : assets/videos/{slug_nom}_highlight.mp4 dans le repo GitHub
+import os as _os, base64 as _b64
+slug_video = name.lower() \
+    .replace('é','e').replace('è','e').replace('ê','e') \
+    .replace('à','a').replace('â','a') \
+    .replace('ù','u').replace('û','u') \
+    .replace('î','i').replace('ï','i') \
+    .replace('ô','o') \
+    .replace(' ','-').replace("'",'')
+video_path = f"assets/videos/{slug_video}_highlight.mp4"
+if _os.path.exists(video_path):
+    vcol, _ = st.columns([1, 2])
+    with vcol:
         with open(video_path, 'rb') as _vf:
             _vdata = _b64.b64encode(_vf.read()).decode()
         st.markdown(f"""
             <video autoplay loop muted playsinline
-                style="width:100%;border-radius:8px;margin-top:8px">
+                style="width:100%;border-radius:10px;margin-bottom:12px">
                 <source src="data:video/mp4;base64,{_vdata}" type="video/mp4">
             </video>
         """, unsafe_allow_html=True)
-    else:
-        st.caption(f"Vidéo attendue : {video_path}")
-
-st.markdown(f'<hr style="border-color:{BORDER};margin:0 0 14px">',unsafe_allow_html=True)
+else:
+    st.warning(f"Vidéo attendue : {video_path}")
 
 if nb==0:
     st.info("Aucun combat analyse. Effectuez une session et sauvegardez le profil.")
