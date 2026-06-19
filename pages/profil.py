@@ -185,11 +185,23 @@ slug_video = (name or '').lower() \
 video_path = f"assets/videos/{slug_video}_highlight.mp4"
 _has_video = _os.path.exists(video_path)
 
+# Colonnes : vidéo à gauche (petite) | infos à droite | déconnexion
 if _has_video:
-    ch1, ch_vid, ch2 = st.columns([3, 1, 1])
+    ch_vid, ch1, ch2 = st.columns([1, 3, 1])
 else:
     ch1, ch2 = st.columns([4, 1])
     ch_vid = None
+
+if ch_vid is not None:
+    with ch_vid:
+        with open(video_path, 'rb') as _vf:
+            _vdata = _b64.b64encode(_vf.read()).decode()
+        st.markdown(f"""
+            <video autoplay loop muted playsinline
+                style="width:50%;border-radius:10px;margin-top:14px;display:block">
+                <source src="data:video/mp4;base64,{_vdata}" type="video/mp4">
+            </video>
+        """, unsafe_allow_html=True)
 
 with ch1:
     badges = ''.join([
@@ -210,17 +222,6 @@ with ch1:
         <div>{badges}</div>{desc}
         </div>
     """, unsafe_allow_html=True)
-
-if ch_vid is not None:
-    with ch_vid:
-        with open(video_path, 'rb') as _vf:
-            _vdata = _b64.b64encode(_vf.read()).decode()
-        st.markdown(f"""
-            <video autoplay loop muted playsinline
-                style="width:100%;border-radius:10px;margin-top:10px">
-                <source src="data:video/mp4;base64,{_vdata}" type="video/mp4">
-            </video>
-        """, unsafe_allow_html=True)
 
 with ch2:
     if st.button("Deconnexion"):
