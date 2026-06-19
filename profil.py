@@ -264,9 +264,36 @@ received = data.get('total_touches_received',0)
 sanctions_total = (data.get('actions_breakdown') or {}).get('Sanctions',0)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# HEADER
+# HEADER + VIDÉO HIGHLIGHT
 # ─────────────────────────────────────────────────────────────────────────────
-ch1,ch2 = st.columns([4,1])
+import os as _os, base64 as _b64
+slug_video = (name or '').lower() \
+    .replace('é','e').replace('è','e').replace('ê','e') \
+    .replace('à','a').replace('â','a') \
+    .replace('ù','u').replace('û','u') \
+    .replace('î','i').replace('ï','i') \
+    .replace('ô','o').replace(' ','-').replace("'",'')
+video_path = f"assets/videos/{slug_video}_highlight.mp4"
+_has_video = _os.path.exists(video_path)
+
+# Vidéo à gauche | infos combattant | déconnexion
+if _has_video:
+    ch_vid, ch1, ch2 = st.columns([1, 3, 1])
+else:
+    ch1, ch2 = st.columns([4, 1])
+    ch_vid = None
+
+if ch_vid is not None:
+    with ch_vid:
+        with open(video_path, 'rb') as _vf:
+            _vdata = _b64.b64encode(_vf.read()).decode()
+        st.markdown(f"""
+            <video autoplay loop muted playsinline
+                style="width:50%;border-radius:10px;margin-top:14px;display:block">
+                <source src="data:video/mp4;base64,{_vdata}" type="video/mp4">
+            </video>
+        """, unsafe_allow_html=True)
+
 with ch1:
     badges = ''.join([
         f'<span style="padding:3px 10px;border-radius:6px;font-size:0.65rem;font-weight:700;'
@@ -286,6 +313,7 @@ with ch1:
         <div>{badges}</div>{desc}
         </div>
     """, unsafe_allow_html=True)
+
 with ch2:
     if st.button("Deconnexion"):
         st.session_state.auth_success = False
