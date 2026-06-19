@@ -196,6 +196,21 @@ with ch2:
         st.session_state.auth_success=False; st.session_state.athlete_data=None
         st.switch_page("app.py")
 
+    # ── Vidéo highlight du combattant ────────────────────────────────────
+    # Fichier : assets/videos/{slug_nom}_highlight.mp4 dans le repo GitHub
+    # Ex: assets/videos/leandre_highlight.mp4, guillaume_highlight.mp4
+    slug_video = name.lower() \
+        .replace('é','e').replace('è','e').replace('ê','e') \
+        .replace('à','a').replace('â','a') \
+        .replace('ù','u').replace('û','u') \
+        .replace('î','i').replace('ï','i') \
+        .replace('ô','o') \
+        .replace(' ','-').replace("'",'')
+    video_path = f"assets/videos/{slug_video}_highlight.mp4"
+    import os as _os
+    if _os.path.exists(video_path):
+        st.video(video_path, loop=True, autoplay=True, muted=True)
+
 st.markdown(f'<hr style="border-color:{BORDER};margin:0 0 14px">',unsafe_allow_html=True)
 
 if nb==0:
