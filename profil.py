@@ -139,7 +139,7 @@ h1,h2,h3{{color:{WHITE}!important}}
 # AUTH
 # ─────────────────────────────────────────────────────────────────────────────
 if not st.session_state.get('auth_success'):
-    st.switch_page("app.py")
+    st.rerun()
 
 ath  = st.session_state.get('athlete_data', {})
 raw  = ath.get('json_data','{}')
@@ -225,7 +225,7 @@ if ch_vid is not None:
 with ch2:
     if st.button("Deconnexion"):
         st.session_state.auth_success=False; st.session_state.athlete_data=None
-        st.switch_page("app.py")
+        st.rerun()
 
 st.markdown(f'<hr style="border-color:{BORDER};margin:0 0 14px">',unsafe_allow_html=True)
 
@@ -477,8 +477,9 @@ st.markdown(f'<div class="sec" style="color:{AMBER}">Analyse Sabre — Donnees v
 sb=[h.get('sabre',{}) or {} for h in hist]
 det=round(sum(s.get('detected_pct',0) or 0 for s in sb)/max(len(sb),1))
 ang=round(sum(s.get('avg_angle',0) or 0 for s in sb)/max(len(sb),1))
-zdm=max(set(s.get('zone_dom','?') for s in sb if s.get('zone_dom')),
-        key=lambda z:sum(1 for s in sb if s.get('zone_dom')==z)) if sb else '—'
+_zdm_set=set(s.get('zone_dom','?') for s in sb if s.get('zone_dom'))
+zdm=max(_zdm_set,
+        key=lambda z:sum(1 for s in sb if s.get('zone_dom')==z)) if _zdm_set else '—'
 trt=sum(s.get('tranchant',0) or 0 for s in sb)
 cs1,cs2,cs3,cs4=st.columns(4)
 with cs1: st.metric("Detection %",f"{det}%")
