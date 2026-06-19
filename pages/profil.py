@@ -26,6 +26,10 @@ import re
 # ─────────────────────────────────────────────────────────────────────────────
 # THEME identique a T dans CareerProfile.js
 # ─────────────────────────────────────────────────────────────────────────────
+def hex_rgba(hex_color, alpha=1.0):
+    h = hex_color.lstrip('#')
+    r,g,b = int(h[0:2],16), int(h[2:4],16), int(h[4:6],16)
+    return f"rgba({r},{g},{b},{alpha})" 
 BG       = 'hsl(222, 25%, 10%)'
 SURFACE  = 'hsl(222, 20%, 14%)'
 BORDER   = 'hsl(222, 20%, 22%)'
@@ -169,9 +173,24 @@ received = data.get('total_touches_received',0)
 sanctions_total = (data.get('actions_breakdown') or {}).get('Sanctions',0)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# HEADER
+# HEADER + VIDÉO HIGHLIGHT
 # ─────────────────────────────────────────────────────────────────────────────
-ch1,ch2 = st.columns([4,1])
+import os as _os, base64 as _b64
+slug_video = (name or '').lower() \
+    .replace('é','e').replace('è','e').replace('ê','e') \
+    .replace('à','a').replace('â','a') \
+    .replace('ù','u').replace('û','u') \
+    .replace('î','i').replace('ï','i') \
+    .replace('ô','o').replace(' ','-').replace("'",'')
+video_path = f"assets/videos/{slug_video}_highlight.mp4"
+_has_video = _os.path.exists(video_path)
+
+if _has_video:
+    ch1, ch_vid, ch2 = st.columns([3, 1, 1])
+else:
+    ch1, ch2 = st.columns([4, 1])
+    ch_vid = None
+
 with ch1:
     badges = ''.join([
         f'<span style="padding:3px 10px;border-radius:6px;font-size:0.65rem;font-weight:700;'
@@ -191,40 +210,24 @@ with ch1:
         <div>{badges}</div>{desc}
         </div>
     """, unsafe_allow_html=True)
+
+if ch_vid is not None:
+    with ch_vid:
+        with open(video_path, 'rb') as _vf:
+            _vdata = _b64.b64encode(_vf.read()).decode()
+        st.markdown(f"""
+            <video autoplay loop muted playsinline
+                style="width:100%;border-radius:10px;margin-top:10px">
+                <source src="data:video/mp4;base64,{_vdata}" type="video/mp4">
+            </video>
+        """, unsafe_allow_html=True)
+
 with ch2:
     if st.button("Deconnexion"):
         st.session_state.auth_success=False; st.session_state.athlete_data=None
         st.switch_page("app.py")
 
 st.markdown(f'<hr style="border-color:{BORDER};margin:0 0 14px">',unsafe_allow_html=True)
-
-# ── Vidéo highlight du combattant ────────────────────────────────────────────
-import os as _os, base64 as _b64
-# Diagnostic — affiche les infos clés pour débugger
-_cwd = _os.getcwd()
-slug_video = (name or '').lower() \
-    .replace('é','e').replace('è','e').replace('ê','e') \
-    .replace('à','a').replace('â','a') \
-    .replace('ù','u').replace('û','u') \
-    .replace('î','i').replace('ï','i') \
-    .replace('ô','o') \
-    .replace(' ','-').replace("'",'')
-video_path = f"assets/videos/{slug_video}_highlight.mp4"
-_full_path = _os.path.join(_cwd, video_path)
-st.info(f"name='{name}' | slug='{slug_video}' | cwd={_cwd} | existe={_os.path.exists(video_path)}")
-if _os.path.exists(video_path):
-    vcol, _ = st.columns([1, 2])
-    with vcol:
-        with open(video_path, 'rb') as _vf:
-            _vdata = _b64.b64encode(_vf.read()).decode()
-        st.markdown(f"""
-            <video autoplay loop muted playsinline
-                style="width:100%;border-radius:10px;margin-bottom:12px">
-                <source src="data:video/mp4;base64,{_vdata}" type="video/mp4">
-            </video>
-        """, unsafe_allow_html=True)
-else:
-    st.warning(f"Introuvable : {_full_path}")
 
 if nb==0:
     st.info("Aucun combat analyse. Effectuez une session et sauvegardez le profil.")
@@ -298,7 +301,7 @@ with col_r:
         fill='toself', mode='lines+markers',
         name=name or 'Combattant',
         line=dict(color=dom_color,width=2.5),
-        fillcolor=dom_color+'26', marker=dict(size=5),
+        fillcolor=hex_rgba(dom_color, 0.15), marker=dict(size=5),
     ))
     fig_r.update_layout(**LAYOUT, height=230,
         polar=dict(
