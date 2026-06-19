@@ -199,9 +199,10 @@ with ch2:
 st.markdown(f'<hr style="border-color:{BORDER};margin:0 0 14px">',unsafe_allow_html=True)
 
 # ── Vidéo highlight du combattant ────────────────────────────────────────────
-# Fichier : assets/videos/{slug_nom}_highlight.mp4 dans le repo GitHub
 import os as _os, base64 as _b64
-slug_video = name.lower() \
+# Diagnostic — affiche les infos clés pour débugger
+_cwd = _os.getcwd()
+slug_video = (name or '').lower() \
     .replace('é','e').replace('è','e').replace('ê','e') \
     .replace('à','a').replace('â','a') \
     .replace('ù','u').replace('û','u') \
@@ -209,6 +210,8 @@ slug_video = name.lower() \
     .replace('ô','o') \
     .replace(' ','-').replace("'",'')
 video_path = f"assets/videos/{slug_video}_highlight.mp4"
+_full_path = _os.path.join(_cwd, video_path)
+st.info(f"name='{name}' | slug='{slug_video}' | cwd={_cwd} | existe={_os.path.exists(video_path)}")
 if _os.path.exists(video_path):
     vcol, _ = st.columns([1, 2])
     with vcol:
@@ -221,7 +224,7 @@ if _os.path.exists(video_path):
             </video>
         """, unsafe_allow_html=True)
 else:
-    st.warning(f"Vidéo attendue : {video_path}")
+    st.warning(f"Introuvable : {_full_path}")
 
 if nb==0:
     st.info("Aucun combat analyse. Effectuez une session et sauvegardez le profil.")
